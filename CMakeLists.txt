@@ -15,7 +15,9 @@ if(NOT MSVC)
   add_link_options(-fsanitize=address,undefined)
 endif()
 
+add_library(titans_lib STATIC domain/Book.cpp domain/Member.cpp)
 add_executable(titans main.cpp)
+target_link_libraries(titans PRIVATE titans_lib)
 
 include(FetchContent)
 FetchContent_Declare(doctest
@@ -23,5 +25,5 @@ FetchContent_Declare(doctest
   GIT_TAG v2.4.11)
 FetchContent_MakeAvailable(doctest)
 
-add_executable(titans_tests tests/test_main.cpp tests/test_container.cpp tests/test_iterator.cpp tests/test_algorithms.cpp)
-target_link_libraries(titans_tests doctest::doctest)
+add_executable(titans_tests tests/test_main.cpp tests/test_container.cpp tests/test_iterator.cpp tests/test_algorithms.cpp tests/test_book.cpp tests/test_member.cpp)
+target_link_libraries(titans_tests PRIVATE titans_lib doctest::doctest)
