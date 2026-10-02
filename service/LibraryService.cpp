@@ -1,5 +1,6 @@
 #include "service/LibraryService.h"
 #include "domain/Text.h"
+#include "repository/RepositoryErrors.h"
 
 #include <iterator>
 #include <stdexcept>
@@ -41,6 +42,7 @@ void LibraryService::add_member(int id, std::string name) {
     if (find_member(id) != members_.end()) {
         throw DuplicateError("member already exists: " + std::to_string(id));
     }
+    repository_->add_member(member);
     members_.push_back(std::move(member));
 }
 
@@ -52,6 +54,7 @@ void LibraryService::remove_member(int id) {
     if (it->borrowed_count() > 0) {
         throw std::logic_error("member still has borrowed books");
     }
+    repository_->remove_member(id);
     members_.remove_at(static_cast<std::size_t>(std::distance(members_.begin(), it)));
 }
 
@@ -84,6 +87,7 @@ void LibraryService::add_book(Book book) {
     if (find_book(book.isbn()) != books_.end()) {
         throw DuplicateError("book already exists: " + book.isbn());
     }
+    repository_->add_book(book);
     books_.push_back(std::move(book));
 }
 
@@ -96,6 +100,7 @@ void LibraryService::remove_book(const std::string& isbn) {
     if (!it->is_available()) {
         throw std::logic_error("cannot remove a borrowed book");
     }
+    repository_->remove_book(normalized);
     books_.remove_at(static_cast<std::size_t>(std::distance(books_.begin(), it)));
 }
 
@@ -153,6 +158,7 @@ void LibraryService::borrow_book(const std::string& isbn, int member_id) {
         throw std::logic_error("borrow limit reached");
     }
     // (6) Apply: member first (can throw for duplicate), then book
+    repository_->record_borrow(normalized, member_id);
     mit->add_borrowed(normalized);
     bit->mark_borrowed();
 }
@@ -180,6 +186,7 @@ int LibraryService::return_book(const std::string& isbn) {
     }
     int holder_id = mit->id();
     // (5) Apply: remove from member first, then mark book returned
+    repository_->record_return(normalized);
     mit->remove_borrowed(normalized);
     bit->mark_returned();
     return holder_id;
@@ -266,6 +273,29 @@ void LibraryService::sort_by_author(SortOrder order, SortAlgorithm algorithm) {
 void LibraryService::sort_by_genre(SortOrder order, SortAlgorithm algorithm) {
     GenreSort strategy;
     sort_books(strategy, order, algorithm);
+}
+
+LibraryService LibraryService::open(std::shared_ptr<ILibraryRepository> repository) {
+    if (!repository) {
+        throw std::invalid_argument("repository must not be null");
+    }
+    StoredLibrary stored = repository->load();
+    LibraryService loaded;
+    try {
+        for (const auto& member : stored.members) {
+            loaded.add_member(member.id(), member.name());
+        }
+        for (const auto& book : stored.books) {
+            loaded.add_book(book);
+        }
+        for (const auto& loan : stored.open_loans) {
+            loaded.borrow_book(loan.isbn, loan.member_id);
+        }
+    } catch (const std::exception& e) {
+        throw DatabaseError(std::string("database contents are inconsistent: ") + e.what());
+    }
+    loaded.repository_ = std::move(repository);
+    return loaded;
 }
 
 } // namespace titans

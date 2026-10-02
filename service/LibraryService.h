@@ -8,7 +8,10 @@
 #include "service/SearchStrategy.h"
 
 #include <cstddef>
+#include <memory>
 #include <string>
+#include "repository/ILibraryRepository.h"
+#include "repository/NullRepository.h"
 
 namespace titans {
 
@@ -138,6 +141,24 @@ public:
     void sort_by_genre(SortOrder order = SortOrder::Ascending,
                        SortAlgorithm algorithm = SortAlgorithm::Merge);
 
+    // ── Persistence ──────────────────────────────────────────────────
+    //
+    // Write-ahead order:
+    // Every mutating function validates everything, then writes to the repository,
+    // and only then changes the in-memory state. If the repository throws, memory
+    // is untouched, so the strong guarantee holds.
+    // The one documented gap: an allocation failure (std::bad_alloc) AFTER a
+    // successful repository write would leave the repository ahead of memory.
+    // Sorting, searching and all read functions never touch the repository.
+    // The sort order is not persisted: after a restart the catalog is in insertion order.
+    //
+    // open creates a service whose state is loaded from the repository and whose
+    // later changes are written through to it; it throws std::invalid_argument("repository must not be null")
+    // for a null pointer, lets DatabaseError from load() propagate, and throws
+    // DatabaseError("database contents are inconsistent: " + what) if the stored data
+    // violates the service's rules.
+    static LibraryService open(std::shared_ptr<ILibraryRepository> repository);
+
 private:
     Container<Book> books_;
     Container<Member> members_;
@@ -149,6 +170,11 @@ private:
 
     Container<Member>::Iterator find_member(int id);
     Container<Member>::ConstIterator find_member(int id) const;
+
+    // Shared repository pointer. Defaults to NullRepository (in-memory mode).
+    // Copies share the repository: copying a service that persists to a real repository
+    // is only safe for read-only use.
+    std::shared_ptr<ILibraryRepository> repository_ = std::make_shared<NullRepository>();
 };
 
 } // namespace titans
