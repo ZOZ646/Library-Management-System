@@ -23,5 +23,5 @@ FetchContent_Declare(doctest
   GIT_TAG v2.4.11)
 FetchContent_MakeAvailable(doctest)
 
-add_executable(titans_tests tests/test_main.cpp tests/test_container.cpp tests/test_iterator.cpp)
+add_executable(titans_tests tests/test_main.cpp tests/test_container.cpp tests/test_iterator.cpp tests/test_algorithms.cpp)
 target_link_libraries(titans_tests doctest::doctest)

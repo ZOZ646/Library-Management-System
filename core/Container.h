@@ -5,6 +5,7 @@
 #include <utility>
 #include <iterator>
 #include <type_traits>
+#include <functional>
 
 namespace titans {
 
@@ -529,6 +530,272 @@ public:
             --it;
         }
         return it;
+    }
+
+public:
+    /*
+     * Documented semantics:
+     * - sort and insertion_sort are stable and relink existing nodes:
+     *   no element is copied, moved, allocated or destroyed.
+     *   Iterators and references to elements stay valid and keep referring to the same element,
+     *   which simply changes position. end() is unaffected.
+     * - If the comparator throws, the container remains valid and contains the same elements
+     *   in an unspecified order (basic exception guarantee).
+     * - find / find_if return the first match in list order, or end().
+     * - The comparator must not access or modify the container while a sort runs.
+     */
+
+    // O(n)
+    Iterator find(const T& value) {
+        Node* node = find_node_if([&value](const T& item) { return item == value; });
+        return Iterator(node, this);
+    }
+
+    // O(n)
+    ConstIterator find(const T& value) const {
+        Node* node = find_node_if([&value](const T& item) { return item == value; });
+        return ConstIterator(node, this);
+    }
+
+    // O(n)
+    template <typename Predicate>
+    Iterator find_if(Predicate pred) {
+        Node* node = find_node_if(pred);
+        return Iterator(node, this);
+    }
+
+    // O(n)
+    template <typename Predicate>
+    ConstIterator find_if(Predicate pred) const {
+        Node* node = find_node_if(pred);
+        return ConstIterator(node, this);
+    }
+
+    // O(n log n)
+    template <typename Compare>
+    void sort(Compare comp) {
+        if (size_ < 2) {
+            return;
+        }
+        Node* chain = head_;
+        try {
+            merge_sort_chain(chain, size_, comp);
+        } catch (...) {
+            relink(chain);
+            throw;
+        }
+        relink(chain);
+    }
+
+    // O(n log n)
+    void sort() {
+        sort(std::less<T>());
+    }
+
+    // O(n^2) worst/average, O(n) best
+    template <typename Compare>
+    void insertion_sort(Compare comp) {
+        if (size_ < 2) {
+            return;
+        }
+        Node* current = head_->next;
+        while (current != nullptr) {
+            Node* following = current->next;
+            Node* pos = current->prev;
+            while (pos != nullptr && comp(current->data, pos->data)) {
+                pos = pos->prev;
+            }
+            if (pos != current->prev) {
+                detach(current);
+                attach_after(pos, current);
+            }
+            current = following;
+        }
+    }
+
+    // O(n^2) worst/average, O(n) best
+    void insertion_sort() {
+        insertion_sort(std::less<T>());
+    }
+
+private:
+    template <typename Predicate>
+    Node* find_node_if(Predicate&& pred) const {
+        for (Node* curr = head_; curr != nullptr; curr = curr->next) {
+            if (pred(curr->data)) {
+                return curr;
+            }
+        }
+        return nullptr;
+    }
+
+    static Node* split_chain(Node* head, std::size_t count) noexcept {
+        Node* curr = head;
+        for (std::size_t i = 1; i < count; ++i) {
+            curr = curr->next;
+        }
+        Node* remainder = curr->next;
+        curr->next = nullptr;
+        return remainder;
+    }
+
+    static void append_chain(Node*& head, Node* other) noexcept {
+        if (!head) {
+            head = other;
+            return;
+        }
+        if (!other) {
+            return;
+        }
+        Node* curr = head;
+        while (curr->next != nullptr) {
+            curr = curr->next;
+        }
+        curr->next = other;
+    }
+
+    template <typename Compare>
+    static void merge_chains(Node*& a, Node*& b, Compare& comp) {
+        Node* x = a;
+        Node* y = b;
+        a = nullptr;
+        b = nullptr;
+
+        Node* result_head = nullptr;
+        Node* result_tail = nullptr;
+
+        auto append_to_result = [&](Node* node) noexcept {
+            if (!result_head) {
+                result_head = node;
+                result_tail = node;
+            } else {
+                result_tail->next = node;
+                result_tail = node;
+            }
+            result_tail->next = nullptr;
+        };
+
+        try {
+            while (x != nullptr && y != nullptr) {
+                if (comp(y->data, x->data)) {
+                    Node* next_y = y->next;
+                    append_to_result(y);
+                    y = next_y;
+                } else {
+                    Node* next_x = x->next;
+                    append_to_result(x);
+                    x = next_x;
+                }
+            }
+            if (x != nullptr) {
+                if (!result_head) {
+                    result_head = x;
+                } else {
+                    result_tail->next = x;
+                }
+            } else if (y != nullptr) {
+                if (!result_head) {
+                    result_head = y;
+                } else {
+                    result_tail->next = y;
+                }
+            }
+            a = result_head;
+        } catch (...) {
+            if (x != nullptr) {
+                if (!result_head) {
+                    result_head = x;
+                } else {
+                    result_tail->next = x;
+                }
+                Node* curr = x;
+                while (curr->next != nullptr) {
+                    curr = curr->next;
+                }
+                curr->next = y;
+            } else {
+                if (!result_head) {
+                    result_head = y;
+                } else {
+                    result_tail->next = y;
+                }
+            }
+            a = result_head;
+            b = nullptr;
+            throw;
+        }
+    }
+
+    // KEY INVARIANT: when merge_sort_chain returns OR throws, head refers to a
+    // nullptr-terminated chain that contains exactly the same nodes it was given,
+    // nothing lost and nothing duplicated.
+    template <typename Compare>
+    static void merge_sort_chain(Node*& head, std::size_t count, Compare& comp) {
+        if (count < 2) {
+            return;
+        }
+        std::size_t mid = count / 2;
+        Node* second = split_chain(head, mid);
+        try {
+            merge_sort_chain(head, mid, comp);
+            merge_sort_chain(second, count - mid, comp);
+            merge_chains(head, second, comp);
+        } catch (...) {
+            append_chain(head, second);
+            throw;
+        }
+    }
+
+    void relink(Node* head) noexcept {
+        head_ = head;
+        if (!head_) {
+            tail_ = nullptr;
+            return;
+        }
+        head_->prev = nullptr;
+        Node* curr = head_;
+        while (curr->next != nullptr) {
+            curr->next->prev = curr;
+            curr = curr->next;
+        }
+        tail_ = curr;
+    }
+
+    void detach(Node* node) noexcept {
+        if (node->prev) {
+            node->prev->next = node->next;
+        } else {
+            head_ = node->next;
+        }
+        if (node->next) {
+            node->next->prev = node->prev;
+        } else {
+            tail_ = node->prev;
+        }
+        node->prev = nullptr;
+        node->next = nullptr;
+    }
+
+    void attach_after(Node* pos, Node* node) noexcept {
+        if (pos == nullptr) {
+            node->prev = nullptr;
+            node->next = head_;
+            if (head_) {
+                head_->prev = node;
+            } else {
+                tail_ = node;
+            }
+            head_ = node;
+        } else {
+            node->prev = pos;
+            node->next = pos->next;
+            if (pos->next) {
+                pos->next->prev = node;
+            } else {
+                tail_ = node;
+            }
+            pos->next = node;
+        }
     }
 };
 
