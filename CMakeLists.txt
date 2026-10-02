@@ -15,7 +15,7 @@ if(NOT MSVC)
   add_link_options(-fsanitize=address,undefined)
 endif()
 
-add_library(titans_lib STATIC domain/Book.cpp domain/Member.cpp service/SortStrategy.cpp service/SearchStrategy.cpp service/LibraryService.cpp)
+add_library(titans_lib STATIC domain/Book.cpp domain/Member.cpp service/SortStrategy.cpp service/SearchStrategy.cpp service/LibraryService.cpp ui/Table.cpp ui/InputReader.cpp ui/DemoData.cpp ui/ConsoleApp.cpp)
 add_executable(titans main.cpp)
 target_link_libraries(titans PRIVATE titans_lib)
 
@@ -25,5 +25,5 @@ FetchContent_Declare(doctest
   GIT_TAG v2.4.11)
 FetchContent_MakeAvailable(doctest)
 
-add_executable(titans_tests tests/test_main.cpp tests/test_container.cpp tests/test_iterator.cpp tests/test_algorithms.cpp tests/test_book.cpp tests/test_member.cpp tests/test_text.cpp tests/test_strategies.cpp tests/test_library_service.cpp tests/test_library_queries.cpp tests/test_library_scenarios.cpp)
+add_executable(titans_tests tests/test_main.cpp tests/test_container.cpp tests/test_iterator.cpp tests/test_algorithms.cpp tests/test_book.cpp tests/test_member.cpp tests/test_text.cpp tests/test_strategies.cpp tests/test_library_service.cpp tests/test_library_queries.cpp tests/test_library_scenarios.cpp tests/test_ui_text.cpp tests/test_input_reader.cpp tests/test_console_app.cpp tests/test_console_sessions.cpp)
 target_link_libraries(titans_tests PRIVATE titans_lib doctest::doctest)
