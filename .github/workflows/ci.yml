@@ -10,13 +10,23 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
+        include:
+          - os: ubuntu-latest
+            sanitize: "ON"
+          - os: macos-latest
+            sanitize: "OFF"
+          - os: windows-latest
+            sanitize: "OFF"
 
     steps:
       - uses: actions/checkout@v4
 
+      - name: Allow AddressSanitizer on newer Linux kernels
+        if: runner.os == 'Linux'
+        run: sudo sysctl -w vm.mmap_rnd_bits=28 || true
+
       - name: Configure CMake
-        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DTITANS_SANITIZE=${{ matrix.sanitize }}
 
       - name: Build
         run: cmake --build build --config Release

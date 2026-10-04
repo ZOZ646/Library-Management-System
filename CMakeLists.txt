@@ -15,7 +15,7 @@ add_library(sqlite3_c STATIC third_party/sqlite/sqlite3.c)
 target_include_directories(sqlite3_c PUBLIC ${CMAKE_SOURCE_DIR}/third_party/sqlite)
 target_compile_definitions(sqlite3_c PRIVATE SQLITE_THREADSAFE=0 SQLITE_OMIT_LOAD_EXTENSION SQLITE_DQS=0)
 
-option(TITANS_SANITIZE "Build with AddressSanitizer and UndefinedBehaviorSanitizer" OFF)
+option(TITANS_SANITIZE "Build with AddressSanitizer and UndefinedBehaviorSanitizer" ON)
 if(NOT MSVC)
   add_compile_options(-Wall -Wextra)
   if(TITANS_SANITIZE)

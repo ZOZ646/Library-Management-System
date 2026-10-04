@@ -1,6 +1,6 @@
 # Titans: Library Management System
 
-Titans is an in-memory and SQLite-backed library management system written in modern C++17. At its foundation is a custom generic doubly linked list container (`titans::Container<T>`) supporting bidirectional iterators and in-place node-relinking merge sort and insertion sort without standard container dependencies. Built atop this container is a domain service layer providing book and member lifecycle tracking, borrowing rules, multi-attribute searching and sorting, and persistent ACID storage through SQLite. The entire codebase is verified with unit tests, randomized stress suites, and AddressSanitizer.
+Titans is an in-memory and SQLite-backed library management system written in modern C++17. At its foundation is a custom generic doubly linked list container (`titans::Container<T>`) supporting bidirectional iterators and in-place node-relinking merge sort and insertion sort without standard container dependencies. Built atop this container is a domain service layer providing book and member lifecycle tracking, borrowing rules, multi-attribute searching and sorting, and persistent ACID storage through SQLite. The entire codebase is verified with unit tests and randomized stress suites; AddressSanitizer and UndefinedBehaviorSanitizer are additionally enabled by default for GCC and Clang builds and run in CI on Linux.
 
 ## Requirements coverage
 
@@ -26,9 +26,11 @@ Titans is an in-memory and SQLite-backed library management system written in mo
 ### Prerequisites
 - A C++17 compliant compiler (GCC 9+, Clang 10+, or MSVC 2019+)
 - CMake 3.16 or newer
-- Git (to clone doctest via `FetchContent` during the initial configuration)
-- Internet access during initial CMake configuration (to fetch doctest v2.4.11)
+- Git (only to clone this repository)
 - SQLite 3.53.4 amalgamation is bundled under `third_party/sqlite/` and requires no external installation.
+- doctest v2.4.11 is bundled as a single header under `third_party/doctest/` and requires no external installation.
+
+No internet access is required to configure or build the project: both third-party dependencies are vendored under `third_party/`.
 
 ### Linux and macOS
 ```bash
@@ -46,6 +48,10 @@ cmake --build build --config Release
 .\build\titans.exe
 ```
 
+### Build options
+- `TITANS_SANITIZE` (default `ON`): builds with AddressSanitizer and UndefinedBehaviorSanitizer. The option is ignored by MSVC, which does not support these sanitizers, so MSVC builds are never instrumented. Use `-DTITANS_SANITIZE=OFF` to disable instrumentation for a GCC or Clang build.
+- `TITANS_BUILD_BENCH` (default `OFF`): also builds the `titans_bench` benchmark executable from `bench/bench_container.cpp`. Use `-DTITANS_BUILD_BENCH=ON`.
+
 ### Command-Line Interface and Exit Codes
 - `--db <file>`: Specifies the SQLite database path (default: `library.db`).
 - `--db :memory:`: Runs in transient in-memory mode without touching disk.
@@ -54,7 +60,7 @@ cmake --build build --config Release
 
 ## Using the application
 
-The console interface provides an interactive menu for catalog management, loans, and statistics. At any input prompt, typing `/cancel` aborts the current operation and returns to the menu without mutating data. Pressing Ctrl+D (EOF) cleanly exits the program.
+The console interface provides an interactive menu for catalog management, loans, and statistics. At any input prompt, typing `/cancel` aborts the current operation and returns to the menu without mutating data. Sending end of input (Ctrl+D on Linux and macOS, Ctrl+Z then Enter on Windows) cleanly exits the program with exit code 0.
 
 The application fully supports UTF-8 encoded text, including multi-byte Arabic script for titles and authors. Right-to-left visual shaping depends on terminal font capabilities.
 
@@ -199,15 +205,21 @@ A doubly linked list was selected to satisfy requirements for stable node refere
 | `insertion_sort` | $O(n^2)$ worst, $O(n)$ best | $O(1)$ |
 
 ### LibraryService Complexity
+Let $b$ be the number of books in the catalog, $m$ the number of registered members, $k$ the number of ISBNs a member currently holds (at most `Member::kMaxBorrowed`, that is 5), and $r$ the number of matches returned by a search.
+
 | Operation | Time Complexity | Extra Space |
 |---|---|---|
-| `add_book` / `remove_book` | $O(b + m)$ | $O(1)$ |
+| `add_book` / `remove_book` | $O(b)$ | $O(1)$ |
 | `has_book` / `get_book` | $O(b)$ | $O(1)$ |
 | `add_member` / `remove_member` | $O(m)$ | $O(1)$ |
-| `borrow_book` / `return_book` | $O(b + m)$ | $O(1)$ |
-| `search` | $O(b)$ | $O(k)$ matches |
+| `borrow_book` | $O(b + m + k)$ | $O(1)$ |
+| `return_book` | $O(b + m \cdot k)$ | $O(1)$ |
+| `search` | $O(b)$ | $O(r)$ matches |
 | `sort_books` (Merge Sort) | $O(b \log b)$ | $O(\log b)$ stack |
-| `total_books` / `available_books` | $O(1)$ | $O(1)$ |
+| `total_books` | $O(1)$ | $O(1)$ |
+| `available_books` / `borrowed_books` | $O(b)$ | $O(1)$ |
+
+The cost of the database write is not included.
 
 ## Correctness and exception safety
 
@@ -252,7 +264,7 @@ State is restored at startup by replaying persisted books, members, and open loa
 
 ## Testing
 
-The test suite runs under doctest and AddressSanitizer:
+The test suite runs under doctest. AddressSanitizer and UndefinedBehaviorSanitizer are enabled by default for GCC and Clang builds (`TITANS_SANITIZE`, default `ON`), are not available for MSVC builds, and are therefore exercised in CI on the Ubuntu job only:
 - **Test cases:** 189 passed (0 failed, 0 skipped)
 - **Assertions:** 209,475 passed (0 failed)
 
@@ -296,8 +308,9 @@ Empirical benchmarking (`bench/bench_container.cpp`) measures `titans::Container
 - Borrowing does not track due dates, renewal counts, or overdue fines.
 - ISBN validation checks length and digit/X format but does not verify ISBN-10/13 checksum digits.
 - Cross-platform CI is configured for Linux, macOS, and Windows via GitHub Actions, but local testing was performed on Windows.
+- The application is not designed for several instances using the same database file at the same time. Each instance loads the data once at start-up and does not refresh it. The database itself stays correct (a partial unique index allows only one open loan per book, so a second instance that tries to borrow an already borrowed book gets a database error), but the second instance can show outdated availability until it is restarted.
 
 ## Third-party software
 
 - **SQLite**: Version 3.53.4 amalgamation bundled in `third_party/sqlite/` under Public Domain license ([third_party/README.md](third_party/README.md)).
-- **doctest**: Version 2.4.11 fetched at CMake configure time under MIT License.
+- **doctest**: Version 2.4.11, bundled as a single header in `third_party/doctest/` under MIT License. `CMakeLists.txt` includes that header directly; nothing is downloaded at configure time.
