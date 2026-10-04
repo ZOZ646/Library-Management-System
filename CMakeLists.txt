@@ -15,7 +15,19 @@ add_library(sqlite3_c STATIC third_party/sqlite/sqlite3.c)
 target_include_directories(sqlite3_c PUBLIC ${CMAKE_SOURCE_DIR}/third_party/sqlite)
 target_compile_definitions(sqlite3_c PRIVATE SQLITE_THREADSAFE=0 SQLITE_OMIT_LOAD_EXTENSION SQLITE_DQS=0)
 
-option(TITANS_SANITIZE "Build with AddressSanitizer and UndefinedBehaviorSanitizer" ON)
+# Sanitizers are enabled by default only where the runtime exists: GCC and Clang on Linux and macOS.
+# MSVC and MinGW/MSYS2 on Windows ship no ASan/UBSan runtime, so there the option defaults to OFF.
+if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang" AND NOT WIN32)
+  set(TITANS_SANITIZE_DEFAULT ON)
+else()
+  set(TITANS_SANITIZE_DEFAULT OFF)
+endif()
+option(TITANS_SANITIZE "Build with AddressSanitizer and UndefinedBehaviorSanitizer" ${TITANS_SANITIZE_DEFAULT})
+
+if(TITANS_SANITIZE AND WIN32)
+  message(WARNING "TITANS_SANITIZE is not supported on Windows toolchains; disabling it")
+  set(TITANS_SANITIZE OFF CACHE BOOL "" FORCE)
+endif()
 if(NOT MSVC)
   add_compile_options(-Wall -Wextra)
   if(TITANS_SANITIZE)

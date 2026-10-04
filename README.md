@@ -1,6 +1,6 @@
 # Titans: Library Management System
 
-Titans is an in-memory and SQLite-backed library management system written in modern C++17. At its foundation is a custom generic doubly linked list container (`titans::Container<T>`) supporting bidirectional iterators and in-place node-relinking merge sort and insertion sort without standard container dependencies. Built atop this container is a domain service layer providing book and member lifecycle tracking, borrowing rules, multi-attribute searching and sorting, and persistent ACID storage through SQLite. The entire codebase is verified with unit tests and randomized stress suites; AddressSanitizer and UndefinedBehaviorSanitizer are additionally enabled by default for GCC and Clang builds and run in CI on Linux.
+Titans is an in-memory and SQLite-backed library management system written in modern C++17. At its foundation is a custom generic doubly linked list container (`titans::Container<T>`) supporting bidirectional iterators and in-place node-relinking merge sort and insertion sort without standard container dependencies. Built atop this container is a domain service layer providing book and member lifecycle tracking, borrowing rules, multi-attribute searching and sorting, and persistent ACID storage through SQLite. The entire codebase is verified with unit tests and randomized stress suites; AddressSanitizer and UndefinedBehaviorSanitizer are additionally enabled by default for GCC and Clang on Linux and macOS, and run in CI on the Ubuntu job.
 
 ## Requirements coverage
 
@@ -49,7 +49,7 @@ cmake --build build --config Release
 ```
 
 ### Build options
-- `TITANS_SANITIZE` (default `ON`): builds with AddressSanitizer and UndefinedBehaviorSanitizer. The option is ignored by MSVC, which does not support these sanitizers, so MSVC builds are never instrumented. Use `-DTITANS_SANITIZE=OFF` to disable instrumentation for a GCC or Clang build.
+- `TITANS_SANITIZE` (default `ON` for GCC and Clang on Linux and macOS, `OFF` elsewhere): builds with AddressSanitizer and UndefinedBehaviorSanitizer. Windows toolchains (both MSVC and MinGW/MSYS2) ship no sanitizer runtime, so the option defaults to `OFF` there, and passing `-DTITANS_SANITIZE=ON` anyway prints a CMake warning and is ignored. Use `-DTITANS_SANITIZE=OFF` to disable instrumentation on a supported platform.
 - `TITANS_BUILD_BENCH` (default `OFF`): also builds the `titans_bench` benchmark executable from `bench/bench_container.cpp`. Use `-DTITANS_BUILD_BENCH=ON`.
 
 ### Command-Line Interface and Exit Codes
@@ -264,9 +264,11 @@ State is restored at startup by replaying persisted books, members, and open loa
 
 ## Testing
 
-The test suite runs under doctest. AddressSanitizer and UndefinedBehaviorSanitizer are enabled by default for GCC and Clang builds (`TITANS_SANITIZE`, default `ON`), are not available for MSVC builds, and are therefore exercised in CI on the Ubuntu job only:
+The test suite runs under doctest. AddressSanitizer and UndefinedBehaviorSanitizer are enabled by default for GCC and Clang on Linux and macOS (`TITANS_SANITIZE`), are not available on Windows toolchains (MSVC and MinGW/MSYS2, where the option defaults to `OFF`), and are therefore exercised in CI on the Ubuntu job only:
 - **Test cases:** 189 passed (0 failed, 0 skipped)
 - **Assertions:** 209,475 passed (0 failed)
+
+These counts were measured on Ubuntu 24.04 with GCC 13.3.0 under AddressSanitizer and UndefinedBehaviorSanitizer (no sanitizer findings), and reproduced identically on Windows with MSVC 19.50 with sanitizers inactive.
 
 | Test File | Focus Area |
 |---|---|
