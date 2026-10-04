@@ -15,9 +15,13 @@ add_library(sqlite3_c STATIC third_party/sqlite/sqlite3.c)
 target_include_directories(sqlite3_c PUBLIC ${CMAKE_SOURCE_DIR}/third_party/sqlite)
 target_compile_definitions(sqlite3_c PRIVATE SQLITE_THREADSAFE=0 SQLITE_OMIT_LOAD_EXTENSION SQLITE_DQS=0)
 
+option(TITANS_SANITIZE "Build with AddressSanitizer and UndefinedBehaviorSanitizer" OFF)
 if(NOT MSVC)
-  add_compile_options(-Wall -Wextra -fsanitize=address,undefined)
-  add_link_options(-fsanitize=address,undefined)
+  add_compile_options(-Wall -Wextra)
+  if(TITANS_SANITIZE)
+    add_compile_options(-fsanitize=address,undefined)
+    add_link_options(-fsanitize=address,undefined)
+  endif()
 endif()
 
 add_library(titans_lib STATIC domain/Book.cpp domain/Member.cpp service/SortStrategy.cpp service/SearchStrategy.cpp service/LibraryService.cpp ui/Table.cpp ui/InputReader.cpp ui/DemoData.cpp ui/ConsoleApp.cpp repository/SqliteRepository.cpp)
@@ -25,11 +29,19 @@ target_link_libraries(titans_lib PUBLIC sqlite3_c)
 add_executable(titans main.cpp)
 target_link_libraries(titans PRIVATE titans_lib)
 
-include(FetchContent)
-FetchContent_Declare(doctest
-  GIT_REPOSITORY https://github.com/doctest/doctest.git
-  GIT_TAG v2.4.11)
-FetchContent_MakeAvailable(doctest)
+# doctest v2.4.11 — bundled single header (no network dependency)
+add_library(doctest INTERFACE)
+target_include_directories(doctest INTERFACE ${CMAKE_SOURCE_DIR}/third_party/doctest)
+add_library(doctest::doctest ALIAS doctest)
 
 add_executable(titans_tests tests/test_main.cpp tests/test_container.cpp tests/test_iterator.cpp tests/test_algorithms.cpp tests/test_book.cpp tests/test_member.cpp tests/test_text.cpp tests/test_strategies.cpp tests/test_library_service.cpp tests/test_library_queries.cpp tests/test_library_scenarios.cpp tests/test_ui_text.cpp tests/test_input_reader.cpp tests/test_console_app.cpp tests/test_console_sessions.cpp tests/test_sqlite_repository.cpp tests/test_service_repository.cpp tests/test_persistence.cpp)
 target_link_libraries(titans_tests PRIVATE titans_lib doctest::doctest)
+option(TITANS_BUILD_BENCH "Build the container benchmark" OFF)
+if(TITANS_BUILD_BENCH)
+  add_executable(titans_bench bench/bench_container.cpp)
+  target_compile_definitions(titans_bench PRIVATE TITANS_BUILD_TYPE="${CMAKE_BUILD_TYPE}")
+endif()
+
+enable_testing()
+add_test(NAME titans_tests COMMAND titans_tests)
+
