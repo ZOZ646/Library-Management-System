@@ -2,6 +2,13 @@
 #include <memory>
 #include <string>
 
+#ifdef _WIN32
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
+#include <windows.h>
+#endif
+
 #include "repository/SqliteRepository.h"
 #include "service/LibraryService.h"
 #include "ui/ConsoleApp.h"
@@ -50,6 +57,11 @@ void print_usage(std::ostream& out) {
 } // namespace
 
 int main(int argc, char* argv[]) {
+#ifdef _WIN32
+    SetConsoleOutputCP(CP_UTF8);
+    SetConsoleCP(CP_UTF8);
+#endif
+
     std::string db_path;
     std::string error_msg;
     ParseResult result = parse_args(argc, argv, db_path, error_msg);

@@ -36,6 +36,12 @@ if(NOT MSVC)
   endif()
 endif()
 
+# MinGW/MSYS2 binaries otherwise depend on libstdc++/libgcc/libwinpthread DLLs
+# that are not on PATH outside a developer shell, so the .exe fails to start.
+if(MINGW)
+  add_link_options(-static -static-libgcc -static-libstdc++)
+endif()
+
 add_library(titans_lib STATIC domain/Book.cpp domain/Member.cpp service/SortStrategy.cpp service/SearchStrategy.cpp service/LibraryService.cpp ui/Table.cpp ui/InputReader.cpp ui/DemoData.cpp ui/ConsoleApp.cpp repository/SqliteRepository.cpp)
 target_link_libraries(titans_lib PUBLIC sqlite3_c)
 add_executable(titans main.cpp)

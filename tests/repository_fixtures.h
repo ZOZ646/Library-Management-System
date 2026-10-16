@@ -173,7 +173,7 @@ public:
 class FailingRepository : public ILibraryRepository {
 public:
     explicit FailingRepository(ILibraryRepository& target, std::size_t fail_on = 0)
-        : target_(target), fail_on_write(fail_on) {}
+        : fail_on_write(fail_on), target_(target) {}
 
     std::size_t fail_on_write{0};
     std::size_t write_count{0};

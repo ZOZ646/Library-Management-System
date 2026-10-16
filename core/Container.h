@@ -49,7 +49,12 @@ private:
     }
 
     // Traverses from the nearer end (head if pos < size_ / 2, else tail).
+    // Callers must pass pos < size_. The empty-container guard avoids
+    // unsigned wrap of size_ - 1 if that contract is ever broken.
     Node* get_node_at(std::size_t pos) const noexcept {
+        if (size_ == 0) {
+            return nullptr;
+        }
         if (pos < size_ / 2) {
             Node* curr = head_;
             for (std::size_t i = 0; i < pos; ++i) {

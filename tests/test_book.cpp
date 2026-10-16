@@ -20,14 +20,6 @@ std::vector<std::string> book_titles_to_vector(const Container<Book>& c) {
     return result;
 }
 
-std::vector<std::string> book_isbns_to_vector(const Container<Book>& c) {
-    std::vector<std::string> result;
-    for (const auto& b : c) {
-        result.push_back(b.isbn());
-    }
-    return result;
-}
-
 } // namespace
 
 TEST_CASE("1. Book construction and availability") {
