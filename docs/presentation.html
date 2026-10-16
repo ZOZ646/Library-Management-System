@@ -1,0 +1,585 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Library Management System — Graduation Project</title>
+<style>
+  :root{
+    --bg:#f6f8fb; --ink:#0f1f3d; --muted:#5a6b86; --accent:#2f6df6; --accent2:#0fb5a8;
+    --line:#dbe3ef; --card:#ffffff; --navy:#0f1f3d; --navy2:#1b3a6b;
+    --shadow:0 10px 30px rgba(15,31,61,.08);
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%}
+  body{
+    font-family:"Segoe UI",system-ui,-apple-system,"Helvetica Neue",Arial,sans-serif;
+    background:var(--bg); color:var(--ink); overflow:hidden;
+  }
+
+  /* ---------- deck / slides ---------- */
+  .deck{position:fixed;inset:0}
+  .slide{
+    position:absolute;inset:0;display:grid;place-items:center;
+    padding:5vh 6vw; opacity:0; visibility:hidden;
+    transform:translateY(12px) scale(.995);
+    transition:opacity .35s ease, transform .35s ease, visibility .35s;
+  }
+  .slide.active{opacity:1;visibility:visible;transform:none}
+  .inner{width:min(1180px,100%);max-height:90vh;overflow:auto}
+
+  /* ---------- typography ---------- */
+  .kicker{
+    font-size:clamp(11px,1.15vw,14px);font-weight:700;letter-spacing:.18em;
+    text-transform:uppercase;color:var(--accent);margin-bottom:.6em;
+  }
+  h1{font-size:clamp(30px,4.6vw,58px);line-height:1.05;letter-spacing:-.02em}
+  h2{font-size:clamp(22px,2.9vw,38px);line-height:1.12;letter-spacing:-.01em;margin-bottom:.55em}
+  h2 .thin{color:var(--muted);font-weight:400}
+  h3{font-size:clamp(14px,1.35vw,18px);margin-bottom:.35em}
+  p{font-size:clamp(13px,1.25vw,17px);line-height:1.5;color:var(--muted)}
+  .lead{font-size:clamp(14px,1.5vw,20px);color:var(--muted);line-height:1.5;margin-top:.7em}
+
+  /* ---------- lists ---------- */
+  ul.points{list-style:none;display:grid;gap:.6em;margin-top:.4em}
+  ul.points li{
+    font-size:clamp(13px,1.3vw,17.5px);line-height:1.4;padding-left:1.5em;position:relative;
+  }
+  ul.points li::before{
+    content:"";position:absolute;left:0;top:.52em;width:.55em;height:.55em;border-radius:3px;
+    background:linear-gradient(135deg,var(--accent),var(--accent2));
+  }
+  ul.points li b{color:var(--ink)}
+  ul.points.sm li{font-size:clamp(12px,1.15vw,15.5px)}
+
+  .cols{display:grid;grid-template-columns:1fr 1fr;gap:clamp(18px,3vw,42px);align-items:start}
+  .cols.wide{grid-template-columns:1.15fr .85fr}
+  @media (max-width:820px){.cols,.cols.wide{grid-template-columns:1fr}}
+
+  .card{
+    background:var(--card);border:1px solid var(--line);border-radius:14px;padding:clamp(16px,2vw,26px);
+    box-shadow:var(--shadow);
+  }
+  .card h3{color:var(--accent)}
+
+  /* ---------- layered stack diagram ---------- */
+  .diagram{display:grid;gap:14px}
+  .layers{display:flex;flex-direction:column;gap:9px}
+  .layer{
+    display:flex;align-items:center;gap:14px;background:var(--card);
+    border:1px solid var(--line);border-left:6px solid var(--accent);
+    border-radius:11px;padding:11px 16px;box-shadow:var(--shadow);
+  }
+  .layer .tag{
+    flex:none;font-size:clamp(10px,.95vw,12px);font-weight:800;letter-spacing:.08em;
+    color:var(--accent);background:#eaf1ff;border-radius:6px;padding:3px 9px;min-width:74px;text-align:center;
+  }
+  .layer b{font-size:clamp(13px,1.25vw,16.5px)}
+  .layer span{color:var(--muted);font-size:clamp(11px,1.05vw,14px)}
+  .layer.c2{border-left-color:var(--accent2)} .layer.c2 .tag{color:#0a7a71;background:#e2f7f4}
+  .arrow{text-align:center;color:var(--muted);font-size:18px;line-height:1;margin:-2px 0}
+
+  .flow-note{
+    display:flex;align-items:center;gap:10px;font-size:clamp(11px,1.05vw,14px);color:var(--muted);
+    background:#fff;border:1px dashed var(--line);border-radius:10px;padding:10px 14px;
+  }
+  .flow-note b{color:var(--ink)}
+
+  /* ---------- stepper ---------- */
+  .steps{display:grid;gap:11px}
+  .step{display:flex;gap:14px;align-items:flex-start}
+  .step .num{
+    flex:none;width:clamp(28px,2.4vw,36px);height:clamp(28px,2.4vw,36px);border-radius:50%;
+    display:grid;place-items:center;font-weight:800;font-size:clamp(12px,1.1vw,15px);color:#fff;
+    background:linear-gradient(135deg,var(--accent),var(--navy2));
+  }
+  .step .body b{font-size:clamp(13px,1.25vw,16.5px);display:block}
+  .step .body span{color:var(--muted);font-size:clamp(11.5px,1.1vw,14.5px)}
+
+  /* ---------- table ---------- */
+  table.tbl{width:100%;border-collapse:collapse;font-size:clamp(12px,1.15vw,15.5px)}
+  table.tbl th,table.tbl td{padding:9px 14px;text-align:left;border-bottom:1px solid var(--line);vertical-align:top}
+  table.tbl th{color:var(--accent);font-size:clamp(10.5px,1vw,13px);text-transform:uppercase;letter-spacing:.08em}
+  table.tbl tr:last-child td{border-bottom:none}
+  table.tbl td:first-child{font-weight:700;color:var(--ink);white-space:nowrap}
+
+  .chips{display:flex;flex-wrap:wrap;gap:9px;margin-top:.3em}
+  .chip{
+    font-size:clamp(11px,1.05vw,14px);border:1px solid var(--line);background:#fff;border-radius:999px;
+    padding:6px 14px;color:var(--ink);box-shadow:var(--shadow)
+  }
+  .chip b{color:var(--accent)}
+
+  .stat{display:flex;gap:clamp(14px,2.4vw,34px);flex-wrap:wrap;margin-top:.4em}
+  .stat .box{background:#fff;border:1px solid var(--line);border-radius:14px;padding:16px 22px;box-shadow:var(--shadow)}
+  .stat .n{font-size:clamp(22px,2.6vw,36px);font-weight:800;color:var(--accent);letter-spacing:-.02em}
+  .stat .l{font-size:clamp(10.5px,1vw,13px);color:var(--muted);text-transform:uppercase;letter-spacing:.08em}
+
+  /* ---------- title slide ---------- */
+  .title-slide{
+    background:radial-gradient(1200px 600px at 15% -10%,#274a86 0%,transparent 55%),
+               linear-gradient(135deg,var(--navy) 0%,#13294f 55%,#0b1a35 100%);
+    color:#fff;text-align:left;
+  }
+  .title-slide .inner{max-width:1000px}
+  .title-slide .kicker{color:#8fb6ff}
+  .title-slide h1{color:#fff}
+  .title-slide .sub{color:#c7d6ef;font-size:clamp(14px,1.6vw,21px);margin-top:.55em;line-height:1.45;max-width:46ch}
+  .title-slide .rule{height:4px;width:96px;background:linear-gradient(135deg,var(--accent),var(--accent2));border-radius:4px;margin:1.4em 0}
+  .title-slide .who{font-size:clamp(14px,1.5vw,20px);font-weight:700;color:#fff}
+  .title-slide .where{font-size:clamp(12px,1.25vw,16px);color:#a9bde0;margin-top:.25em}
+  .title-slide .badge{
+    display:inline-block;font-size:11px;font-weight:800;letter-spacing:.18em;text-transform:uppercase;
+    border:1px solid rgba(255,255,255,.28);border-radius:999px;padding:6px 14px;color:#dbe7ff;margin-bottom:1.1em
+  }
+
+  /* ---------- future work cards ---------- */
+  .fw{display:grid;grid-template-columns:repeat(2,1fr);gap:14px;margin-top:.3em}
+  @media (max-width:820px){.fw{grid-template-columns:1fr}}
+  .fw .card{display:flex;gap:12px;align-items:flex-start}
+  .fw .ico{flex:none;width:34px;height:34px;border-radius:9px;background:#eaf1ff;color:var(--accent);display:grid;place-items:center;font-weight:800}
+
+  /* ---------- chrome ---------- */
+  .progress{position:fixed;top:0;left:0;right:0;height:4px;background:transparent;z-index:40}
+  .progress span{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--accent),var(--accent2));transition:width .3s ease}
+  .foot{position:fixed;left:0;right:0;bottom:0;display:flex;justify-content:space-between;
+        padding:12px 22px;font-size:12px;color:var(--muted);z-index:40;pointer-events:none}
+  .foot .brand{font-weight:700;color:var(--ink);opacity:.75}
+  .counter{font-variant-numeric:tabular-nums;font-weight:700;color:var(--ink);opacity:.75}
+  .hint{position:fixed;bottom:44px;left:50%;transform:translateX(-50%);font-size:12px;color:var(--muted);
+        z-index:40;opacity:.9}
+  .title-slide .foot .brand,.title-slide .foot .counter{color:#dfe9fb}
+
+  /* ---------- speaker notes ---------- */
+  .notes{display:none;margin-top:1em;border-top:2px dashed var(--line);padding-top:.8em;
+         font-size:clamp(11px,1.05vw,13.5px);color:var(--muted);line-height:1.45}
+  .notes b{color:var(--accent)}
+  body.show-notes .notes{display:block}
+
+  @media print{
+    body{overflow:visible;background:#fff}
+    .progress,.foot,.hint{display:none}
+    .slide{position:relative;opacity:1!important;visibility:visible!important;transform:none!important;
+           page-break-after:always;height:100vh;padding:2cm}
+  }
+</style>
+</head>
+<body class="">
+<div class="progress"><span id="bar"></span></div>
+
+<div class="deck" id="deck">
+
+  <!-- 1 — TITLE -->
+  <section class="slide title-slide active">
+    <div class="inner">
+      <div class="badge">Graduation Project · 2026</div>
+      <h1>Library Management System</h1>
+      <div class="sub">A layered, test-driven C++17 application built on a custom generic container, with pluggable search/sort strategies and SQLite persistence.</div>
+      <div class="rule"></div>
+      <div class="who">Mazen Elsayed</div>
+      <div class="where">AI &amp; Data Science · Zagazig National University</div>
+      <div class="notes"><b>Say:</b> "This is a complete library system I designed and built from scratch in C++17 — its own data structure, clear layers, and a full automated test suite."</div>
+    </div>
+  </section>
+
+  <!-- 2 — PROBLEM -->
+  <section class="slide">
+    <div class="inner">
+      <div class="kicker">01 · Problem Statement</div>
+      <h2>Why manual library handling <span class="thin">doesn't scale</span></h2>
+      <div class="cols">
+        <div>
+          <h3>Manual tracking breaks down</h3>
+          <ul class="points">
+            <li>Records live in <b>ledgers or spreadsheets</b> — easy to duplicate or lose.</li>
+            <li>Borrowing state becomes <b>inconsistent</b>: two people for one copy, or an unreturned book nobody tracks.</li>
+            <li>Answering simple questions — <em>what's available? who holds this book?</em> — takes too long.</li>
+            <li>No reliable history, no single source of truth.</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>What this system solves</h3>
+          <ul class="points sm">
+            <li>One <b>consistent catalog</b> of books and members.</li>
+            <li>Enforced <b>borrowing rules</b> (limits, uniqueness, availability).</li>
+            <li>Fast <b>search and sort</b> across the whole catalog.</li>
+            <li><b>Persistent storage</b>, so state survives restarts.</li>
+            <li>A <b>clean, layered design</b> that stays maintainable as it grows.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 3 — OBJECTIVES -->
+  <section class="slide">
+    <div class="inner">
+      <div class="kicker">02 · Project Objectives</div>
+      <h2>What the project sets out to do</h2>
+      <ul class="points">
+        <li><b>Manage books and members</b> — add, remove, list, and inspect records.</li>
+        <li><b>Support borrowing and returning</b> — with enforced limits and availability rules.</li>
+        <li><b>Search and sort the catalog</b> — flexibly, by multiple fields and algorithms.</li>
+        <li><b>Keep data organized and consistent</b> — invariants hold after every operation.</li>
+        <li><b>Provide a clean, maintainable design</b> — separated layers, tested behavior, no leaks.</li>
+      </ul>
+      <div class="notes"><b>Say:</b> "These five objectives map directly onto the layers I'll show next — each goal is owned by exactly one part of the design."</div>
+    </div>
+  </section>
+
+  <!-- 4 — SYSTEM OVERVIEW -->
+  <section class="slide">
+    <div class="inner">
+      <div class="kicker">03 · System Overview</div>
+      <h2>A <span class="thin">layered architecture</span> with one-way dependencies</h2>
+      <div class="cols wide">
+        <div class="diagram">
+          <div class="layers">
+            <div class="layer"><span class="tag">UI</span><div><b>Console interface</b> &nbsp;<span>Consoles, input, tables</span></div></div>
+            <div class="arrow">↓</div>
+            <div class="layer"><span class="tag">Service</span><div><b>LibraryService</b> &nbsp;<span>business rules &amp; façade</span></div></div>
+            <div class="arrow">↓</div>
+            <div class="layer"><span class="tag">Domain</span><div><b>Book · Member</b> &nbsp;<span>entities &amp; their invariants</span></div></div>
+            <div class="arrow">↓</div>
+            <div class="layer c2"><span class="tag">Core</span><div><b>Container&lt;T&gt;</b> &nbsp;<span>custom data structure</span></div></div>
+            <div class="arrow">↓</div>
+            <div class="layer c2"><span class="tag">Storage</span><div><b>Repository → SQLite</b> &nbsp;<span>persistence</span></div></div>
+          </div>
+        </div>
+        <div>
+          <h3>How data flows</h3>
+          <div class="flow-note"><b>1.</b> User acts through the <b>interface</b></div>
+          <div class="flow-note" style="margin-top:9px"><b>2.</b> Request reaches the <b>service</b> layer</div>
+          <div class="flow-note" style="margin-top:9px"><b>3.</b> Business rules are checked</div>
+          <div class="flow-note" style="margin-top:9px"><b>4.</b> State changes in <b>memory</b> and is written to <b>storage</b></div>
+          <p style="margin-top:14px">Each layer depends only on the one beneath it, so an internal change stays local.</p>
+          <div class="notes"><b>Say:</b> "Follow the arrow — a user action goes into the UI, is handled by the service, and only the service touches storage. No layer reaches over another."</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 5 — ARCHITECTURE -->
+  <section class="slide">
+    <div class="inner">
+      <div class="kicker">04 · Architecture</div>
+      <h2>Separation of concerns</h2>
+      <div class="cols">
+        <div class="card"><h3>UI layer</h3><p>Handles <b>user interaction only</b>: menus, input validation, and formatted output. It never contains business rules.</p></div>
+        <div class="card"><h3>Service layer</h3><p>The <b>single entry point</b> for all operations. Owns the business logic and protects the system's invariants.</p></div>
+        <div class="card"><h3>Domain layer</h3><p>Contains the <b>entities and their rules</b> — <code>Book</code> and <code>Member</code> — which validate themselves and cannot exist in an invalid state.</p></div>
+        <div class="card"><h3>Core layer</h3><p>Holds the <b>reusable data structure</b> (<code>Container&lt;T&gt;</code>) that stores the catalog and borrowed lists.</p></div>
+        <div class="card" style="grid-column:1/-1"><h3>Repository layer</h3><p>Handles <b>persistence behind an interface</b>. The rest of the system never talks to SQLite directly — it only sees <code>ILibraryRepository</code>.</p></div>
+      </div>
+      <p class="lead">Why it matters: a change in storage, or a new search option, touches one layer — not the whole program.</p>
+    </div>
+  </section>
+
+  <!-- 6 — COMPONENTS -->
+  <section class="slide">
+    <div class="inner">
+      <div class="kicker">05 · Main Components</div>
+      <h2>The parts that make up the system</h2>
+      <table class="tbl">
+        <tr><th>Component</th><th>Layer</th><th>Responsibility</th></tr>
+        <tr><td>ConsoleApp</td><td>UI</td><td>Menu loop and command dispatch; maps menu entries to actions.</td></tr>
+        <tr><td>InputReader</td><td>UI</td><td>Reads and validates input; handles <code>/cancel</code> and closed input.</td></tr>
+        <tr><td>LibraryService</td><td>Service</td><td>Facade for the catalog and members; enforces all business rules.</td></tr>
+        <tr><td>Book / Member</td><td>Domain</td><td>Validated entities that protect their own invariants.</td></tr>
+        <tr><td>Search / SortStrategy</td><td>Service</td><td>Pluggable query and ordering logic, chosen at runtime.</td></tr>
+        <tr><td>Container&lt;T&gt;</td><td>Core</td><td>Custom doubly linked list with stable nodes and iterators.</td></tr>
+        <tr><td>ILibraryRepository / SqliteRepository</td><td>Storage</td><td>Storage abstraction and its SQLite implementation.</td></tr>
+      </table>
+    </div>
+  </section>
+
+  <!-- 7 — CUSTOM DATA STRUCTURE -->
+  <section class="slide">
+    <div class="inner">
+      <div class="kicker">06 · Custom Data Structure</div>
+      <h2><code>Container&lt;T&gt;</code> — a custom doubly linked list</h2>
+      <div class="cols wide">
+        <div>
+          <h3>Why build it instead of using std::list?</h3>
+          <ul class="points sm">
+            <li>The core exercises <b>data-structure internals</b> directly — not a black box.</li>
+            <li>Full control over <b>memory, iterators and sorting</b>.</li>
+            <li>Proves the algorithms the project relies on, from the ground up.</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>Properties</h3>
+          <ul class="points sm">
+            <li><b>O(1)</b> insert/remove at both ends (head &amp; tail pointers).</li>
+            <li><b>Stable node references</b> — pointers survive sorting and relinking.</li>
+            <li><b>Bidirectional iterators</b> with a documented traversal model.</li>
+            <li><b>Stable in-place merge sort</b> and insertion sort that relink nodes instead of copying data.</li>
+            <li>Exception-safe: operations leave the container valid on failure.</li>
+          </ul>
+        </div>
+      </div>
+      <p class="lead">Role in the project: it stores the <b>book catalog</b> and every member's <b>borrowed list</b>, and powers search, sorting and the stress tests.</p>
+      <div class="notes"><b>Say:</b> "The important guarantee is stability — sorting relinks the nodes instead of copying data, so references to a book stay valid after a sort."</div>
+    </div>
+  </section>
+
+  <!-- 8 — PATTERNS -->
+  <section class="slide">
+    <div class="inner">
+      <div class="kicker">07 · Design Patterns</div>
+      <h2>Patterns chosen where they add real value</h2>
+      <div class="cols">
+        <div class="card"><h3>Facade — LibraryService</h3><p>One simple entry point that <b>hides</b> the container, the strategies and the domain rules behind a small, stable API.</p></div>
+        <div class="card"><h3>Strategy — search &amp; sort</h3><p><code>ISearchStrategy</code> and <code>ISortStrategy</code> let the system <b>swap the search field, sort key and algorithm</b> without changing the service.</p></div>
+        <div class="card"><h3>Repository — storage</h3><p><code>ILibraryRepository</code> <b>abstracts persistence</b>, so the same logic runs against SQLite or an in-memory store.</p></div>
+        <div class="card"><h3>Command — menu actions</h3><p>Each menu entry wraps an action, keeping the UI loop small and keeping navigation data-driven.</p></div>
+      </div>
+      <p class="lead">Result: new behavior is added by extending — not by rewriting existing code.</p>
+    </div>
+  </section>
+
+  <!-- 9 — DOMAIN MODEL -->
+  <section class="slide">
+    <div class="inner">
+      <div class="kicker">08 · Domain Model</div>
+      <h2>Entities that guard their own correctness</h2>
+      <div class="cols">
+        <div class="card">
+          <h3>Book</h3>
+          <p><b>Fields:</b> title, author, ISBN, genre, availability.</p>
+          <ul class="points sm">
+            <li>Text fields are <b>trimmed and non-empty</b>.</li>
+            <li>ISBN is <b>normalized and validated</b> (10 or 13 characters).</li>
+            <li><b>Identity is the ISBN</b> — so ISBNs stay unique.</li>
+            <li>Availability can only flip through <code>mark_borrowed</code> / <code>mark_returned</code>.</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>Member</h3>
+          <p><b>Fields:</b> id, name, list of borrowed ISBNs.</p>
+          <ul class="points sm">
+            <li><b>id &gt; 0</b>, name non-empty.</li>
+            <li>At most <b>5 borrowed books</b> at a time.</li>
+            <li>No duplicate ISBNs in the borrowed list.</li>
+            <li><b>Identity is the id</b>.</li>
+          </ul>
+        </div>
+      </div>
+      <p class="lead">Because constructors and setters validate first, <b>no invalid object can be created</b> — and the service keeps the bigger invariants (uniqueness, borrow rules) true after every call.</p>
+    </div>
+  </section>
+
+  <!-- 10 — DATABASE -->
+  <section class="slide">
+    <div class="inner">
+      <div class="kicker">09 · Database &amp; Persistence</div>
+      <h2>SQLite behind a repository abstraction</h2>
+      <div class="cols wide">
+        <div>
+          <ul class="points">
+            <li><b>SQLite</b> backend (bundled, no external dependency).</li>
+            <li><b>ILibraryRepository</b> defines storage; <b>SqliteRepository</b> implements it.</li>
+            <li>An in-memory repository keeps the app usable without a database.</li>
+            <li><b>Availability is not stored</b> — a book is borrowed exactly when it has an open loan (single source of truth).</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>Write-ahead ordering</h3>
+          <div class="steps">
+            <div class="step"><div class="num">1</div><div class="body"><b>Validate everything</b><span>all checks happen first</span></div></div>
+            <div class="step"><div class="num">2</div><div class="body"><b>Write to the database</b><span>if it fails, memory is untouched</span></div></div>
+            <div class="step"><div class="num">3</div><div class="body"><b>Update in-memory state</b><span>consistency is preserved</span></div></div>
+          </div>
+        </div>
+      </div>
+      <p class="lead">Separating logic from the database means the business rules stay <b>storage-agnostic</b> — easy to test, and easy to replace or extend.</p>
+      <div class="notes"><b>Say:</b> "Availability is derived from open loans, not stored twice — that removes a whole class of bugs where the book and the loan disagree."</div>
+    </div>
+  </section>
+
+  <!-- 11 — FEATURES -->
+  <section class="slide">
+    <div class="inner">
+      <div class="kicker">10 · Main Features</div>
+      <h2>What the user can do</h2>
+      <div class="chips">
+        <span class="chip"><b>Add</b> book</span>
+        <span class="chip"><b>Remove</b> book</span>
+        <span class="chip"><b>Search</b> books — title, author, ISBN, genre</span>
+        <span class="chip"><b>Sort</b> books — title, author, genre</span>
+        <span class="chip"><b>Borrow</b> book</span>
+        <span class="chip"><b>Return</b> book</span>
+        <span class="chip"><b>Manage</b> members — add, remove, list</span>
+        <span class="chip"><b>View</b> a member's borrowed books</span>
+        <span class="chip"><b>Statistics</b> — available vs borrowed</span>
+        <span class="chip"><b>Load</b> sample data (demo)</span>
+      </div>
+      <ul class="points sm" style="margin-top:1.1em">
+        <li>Sorting offers both a <b>merge sort</b> and an <b>insertion sort</b>, ascending or descending.</li>
+        <li>Search and sort are driven by the Strategy pattern, so the set of options is easy to extend.</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- 12 — WORKFLOW -->
+  <section class="slide">
+    <div class="inner">
+      <div class="kicker">11 · Example Workflow</div>
+      <h2>Borrowing a book, <span class="thin">step by step</span></h2>
+      <div class="steps">
+        <div class="step"><div class="num">1</div><div class="body"><b>User chooses “Borrow book” from the UI</b><span>The menu entry triggers the borrow action.</span></div></div>
+        <div class="step"><div class="num">2</div><div class="body"><b>InputReader reads the ISBN and member id</b><span>The ISBN format and the id range are validated immediately.</span></div></div>
+        <div class="step"><div class="num">3</div><div class="body"><b>LibraryService applies the business rules</b><span>Normalizes the ISBN; finds the member and book; checks availability and the 5-book limit.</span></div></div>
+        <div class="step"><div class="num">4</div><div class="body"><b>The repository records the loan</b><span>SqliteRepository inserts an open loan — the durable source of truth.</span></div></div>
+        <div class="step"><div class="num">5</div><div class="body"><b>In-memory state is updated</b><span>The book is marked borrowed and the ISBN is added to the member's list.</span></div></div>
+        <div class="step"><div class="num">6</div><div class="body"><b>The UI reflects the new state</b><span>The updated catalog is shown as a formatted table.</span></div></div>
+      </div>
+      <p class="lead">If any rule fails, the operation throws a typed error and <b>nothing changes</b> — the same input can be retried safely.</p>
+      <div class="notes"><b>Say:</b> "This is the whole project in one slide — validation first, then the database write, then memory last. That order is what gives us the strong exception guarantee."</div>
+    </div>
+  </section>
+
+  <!-- 13 — TESTING -->
+  <section class="slide">
+    <div class="inner">
+      <div class="kicker">12 · Testing &amp; Reliability</div>
+      <h2>Correctness was built in, then verified</h2>
+      <div class="cols wide">
+        <div>
+          <div class="stat">
+            <div class="box"><div class="n">189</div><div class="l">Test cases</div></div>
+            <div class="box"><div class="n">209,475</div><div class="l">Assertions</div></div>
+            <div class="box"><div class="n">0</div><div class="l">Failures</div></div>
+          </div>
+          <ul class="points sm" style="margin-top:1.1em">
+            <li>Unit tests cover every layer: the container, iterators, algorithms, entities, strategies, service, repository and UI.</li>
+            <li><b>Randomized stress and scenario tests</b> exercise the catalog and borrowing under load.</li>
+            <li>Exception-safety is tested: mutating operations keep their <b>strong guarantee</b>.</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>Reliability beyond unit tests</h3>
+          <ul class="points sm">
+            <li>Built and run under <b>AddressSanitizer</b> and <b>UndefinedBehaviorSanitizer</b> on Linux/macOS CI.</li>
+            <li>Sanitizers auto-disable on Windows toolchains, where the runtime isn't available.</li>
+            <li>The full suite runs in continuous integration on every change.</li>
+          </ul>
+        </div>
+      </div>
+      <div class="notes"><b>Say:</b> "189 tests and over two hundred thousand assertions, and the same suite runs under AddressSanitizer and UndefinedBehaviorSanitizer — so memory and undefined behavior are checked too, not just logic."</div>
+    </div>
+  </section>
+
+  <!-- 14 — CHALLENGES -->
+  <section class="slide">
+    <div class="inner">
+      <div class="kicker">13 · Challenges &amp; Solutions</div>
+      <h2>What was hard — and how it was solved</h2>
+      <table class="tbl">
+        <tr><th>Challenge</th><th>Solution</th></tr>
+        <tr><td>Keeping data consistent</td><td>Explicit invariants plus write-ahead ordering, so memory and database never disagree.</td></tr>
+        <tr><td>Designing a reusable container</td><td>A templated <code>Container&lt;T&gt;</code> with iterators and stable node references, stress-tested.</td></tr>
+        <tr><td>Separating UI from logic</td><td>The UI calls only <code>LibraryService</code>; typed exceptions are translated at the boundary.</td></tr>
+        <tr><td>Flexible search and sort</td><td>Strategy pattern with factories — new criteria don't touch existing code.</td></tr>
+        <tr><td>Proving correctness</td><td>189 tests / 209,475 assertions, including randomized scenarios and sanitizers.</td></tr>
+      </table>
+      <div class="notes"><b>Say:</b> "Each challenge has a concrete, named solution — this is the part of the project I'd point to as real engineering, not tutorial code."</div>
+    </div>
+  </section>
+
+  <!-- 15 — CONCLUSION -->
+  <section class="slide">
+    <div class="inner">
+      <div class="kicker">14 · Conclusion</div>
+      <h2>A complete system, built on real engineering</h2>
+      <div class="cols">
+        <div>
+          <h3>What was delivered</h3>
+          <ul class="points sm">
+            <li>A full library system in <b>C++17</b>.</li>
+            <li><b>Five clean layers</b> with one-way dependencies.</li>
+            <li>A <b>custom container</b> with stable references and stable sorting.</li>
+            <li>Design patterns applied <b>where they add value</b>.</li>
+            <li>Backed by <b>189 tests / 209,475 assertions</b> under sanitizers.</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>What I learned</h3>
+          <ul class="points sm">
+            <li>Turning requirements into a <b>layered architecture</b>.</li>
+            <li>Implementing data structures and <b>analysing their complexity</b>.</li>
+            <li><b>Exception safety</b> and defensive design.</li>
+            <li>Testing as a design tool, and persistence behind an abstraction.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 16 — FUTURE WORK -->
+  <section class="slide">
+    <div class="inner">
+      <div class="kicker">15 · Future Work</div>
+      <h2>Where the project can go next</h2>
+      <div class="fw">
+        <div class="card"><div class="ico">GUI</div><div><h3>Graphical front end</h3><p>A desktop or web interface reusing the same service layer unchanged.</p></div></div>
+        <div class="card"><div class="ico">⌕</div><div><h3>Advanced search filters</h3><p>Combined criteria, ranges and fuzzy matching built as new strategies.</p></div></div>
+        <div class="card"><div class="ico">▤</div><div><h3>Reporting &amp; analytics</h3><p>Overdue lists, borrowing trends and usage reports.</p></div></div>
+        <div class="card"><div class="ico">🔒</div><div><h3>Authentication &amp; permissions</h3><p>User roles for librarians and members, with access control.</p></div></div>
+        <div class="card" style="grid-column:1/-1"><div class="ico">DB</div><div><h3>Additional database features</h3><p>Transactions, schema migrations, concurrency handling and backups — all hidden behind the existing repository interface.</p></div></div>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<div class="foot">
+  <div class="brand">Library Management System · Mazen Elsayed</div>
+  <div class="counter" id="counter">1 / 16</div>
+</div>
+<div class="hint" id="hint">Use ← → to navigate · F for fullscreen · N for speaker notes</div>
+
+<script>
+(function(){
+  var slides = Array.prototype.slice.call(document.querySelectorAll('.slide'));
+  var bar = document.getElementById('bar');
+  var counter = document.getElementById('counter');
+  var hint = document.getElementById('hint');
+  var i = 0;
+
+  function show(n){
+    i = Math.max(0, Math.min(slides.length - 1, n));
+    slides.forEach(function(s, k){ s.classList.toggle('active', k === i); });
+    bar.style.width = ((i + 1) / slides.length * 100) + '%';
+    counter.textContent = (i + 1) + ' / ' + slides.length;
+    if (i > 0 && hint) hint.style.display = 'none';
+  }
+
+  document.addEventListener('keydown', function(e){
+    switch(e.key){
+      case 'ArrowRight': case 'ArrowDown': case ' ': case 'PageDown':
+        e.preventDefault(); show(i + 1); break;
+      case 'ArrowLeft': case 'ArrowUp': case 'PageUp':
+        e.preventDefault(); show(i - 1); break;
+      case 'Home': e.preventDefault(); show(0); break;
+      case 'End': e.preventDefault(); show(slides.length - 1); break;
+      case 'n': case 'N': document.body.classList.toggle('show-notes'); break;
+      case 'f': case 'F':
+        if (!document.fullscreenElement) { document.documentElement.requestFullscreen && document.documentElement.requestFullscreen(); }
+        else { document.exitFullscreen && document.exitFullscreen(); }
+        break;
+    }
+  });
+
+  /* click / touch: right half advances, left half goes back */
+  document.addEventListener('click', function(e){
+    var x = e.clientX, w = window.innerWidth;
+    if (x > w * 0.62) show(i + 1);
+    else if (x < w * 0.38) show(i - 1);
+  });
+
+  show(0);
+})();
+</script>
+</body>
+</html>
