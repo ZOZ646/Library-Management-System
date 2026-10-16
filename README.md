@@ -1,5 +1,7 @@
 # Titans: Library Management System
 
+[![Architecture diagram](https://gitdiagram.com/diagram-badge.svg)](https://gitdiagram.com/zoz646/library-management-system?utm_source=readme&utm_medium=badge)
+
 Titans is an in-memory and SQLite-backed library management system written in modern C++17. At its foundation is a custom generic doubly linked list container (`titans::Container<T>`) supporting bidirectional iterators and in-place node-relinking merge sort and insertion sort without standard container dependencies. Built atop this container is a domain service layer providing book and member lifecycle tracking, borrowing rules, multi-attribute searching and sorting, and persistent ACID storage through SQLite. The entire codebase is verified with unit tests and randomized stress suites; AddressSanitizer and UndefinedBehaviorSanitizer are additionally enabled by default for GCC and Clang on Linux and macOS, and run in CI on the Ubuntu job.
 
 ## Requirements coverage
